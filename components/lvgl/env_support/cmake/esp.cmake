@@ -1,17 +1,29 @@
 file(GLOB_RECURSE SOURCES ${LVGL_ROOT_DIR}/src/*.c)
 
+
+# Added by RIWS because somehow the ESP-IDF build system doesn't include this,
+# perhaps because it isn't a component with its own CMakeLists.txt file.
+set(ESP_IDF_FORWARD_SLASHES "C:/bin/esp-idf/esp-idf")
+
+set(RIWS_EXTRA_INCLUDE_DIRS
+    "${ESP_IDF_FORWARD_SLASHES}/components/driver/ledc/include"
+    "${ESP_IDF_FORWARD_SLASHES}/components/driver/gpio/include"
+    "${ESP_IDF_FORWARD_SLASHES}/components/driver/spi/include"
+    "${ESP_IDF_FORWARD_SLASHES}/components/driver/i2c/include"
+    CACHE STRING "" FORCE)
+
 idf_build_get_property(LV_MICROPYTHON LV_MICROPYTHON)
 
 if(LV_MICROPYTHON)
   idf_component_register(
     SRCS
-    ${SOURCES}
+      ${SOURCES}
     INCLUDE_DIRS
-    ${LVGL_ROOT_DIR}
-    ${LVGL_ROOT_DIR}/src
-    ${LVGL_ROOT_DIR}/../
+      ${LVGL_ROOT_DIR}
+      ${LVGL_ROOT_DIR}/src
+      ${LVGL_ROOT_DIR}/../
     REQUIRES
-    main)
+      main)
 else()
   if(CONFIG_LV_BUILD_EXAMPLES)
     file(GLOB_RECURSE EXAMPLE_SOURCES ${LVGL_ROOT_DIR}/examples/*.c)
@@ -42,8 +54,8 @@ else()
 
   idf_component_register(SRCS ${SOURCES} ${EXAMPLE_SOURCES} ${DEMO_SOURCES}
       INCLUDE_DIRS ${LVGL_ROOT_DIR} ${LVGL_ROOT_DIR}/src ${LVGL_ROOT_DIR}/../
-                   ${LVGL_ROOT_DIR}/examples ${LVGL_ROOT_DIR}/demos
-      REQUIRES esp_timer)
+                   ${LVGL_ROOT_DIR}/examples ${LVGL_ROOT_DIR}/demos "${RIWS_EXTRA_INCLUDE_DIRS}"
+      REQUIRES esp_timer driver esp_common log freertos)
 endif()
 
 target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_CONF_INCLUDE_SIMPLE")
