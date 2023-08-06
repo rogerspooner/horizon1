@@ -16,7 +16,7 @@
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
 
-#include "pretty_effect.h"
+#include "display.h"
 
 /*
  This code displays some fancy graphics on the 320x240 LCD on an ESP-WROVER_KIT board.
@@ -400,42 +400,6 @@ static void send_line_finish(spi_device_handle_t spi)
     }
 }
 
-
-//Simple routine to generate some patterns and send them to the LCD. Don't expect anything too
-//impressive. Because the SPI driver handles transactions in the background, we can calculate the next line
-//while the previous one is being sent.
-static void display_pretty_colors(spi_device_handle_t spi)
-{
-    uint16_t *lines[2];
-    //Allocate memory for the pixel buffers
-    for (int i=0; i<2; i++) {
-        lines[i]=heap_caps_malloc(320*PARALLEL_LINES*sizeof(uint16_t), MALLOC_CAP_DMA);
-        assert(lines[i]!=NULL);
-    }
-    int frame=0;
-    //Indexes of the line currently being sent to the LCD and the line we're calculating.
-    int sending_line=-1;
-    int calc_line=0;
-
-    while(1) {
-        frame++;
-        for (int y=0; y<240; y+=PARALLEL_LINES) {
-            //Calculate a line.
-            pretty_effect_calc_lines(lines[calc_line], y, frame, PARALLEL_LINES);
-            //Finish up the sending process of the previous line, if any
-            if (sending_line!=-1) send_line_finish(spi);
-            //Swap sending_line and calc_line
-            sending_line=calc_line;
-            calc_line=(calc_line==1)?0:1;
-            //Send the line we currently calculated.
-            send_lines(spi, y, lines[sending_line]);
-            //The line set is queued up for sending now; the actual sending happens in the
-            //background. We can go on to calculate the next line set as long as we do not
-            //touch line[sending_line]; the SPI sending process is still reading from that.
-        }
-    }
-}
-
 void app_main(void)
 {
     esp_err_t ret;
@@ -449,7 +413,7 @@ void app_main(void)
         .max_transfer_sz=PARALLEL_LINES*320*2+8
     };
 
-    init_displays(); // using LVGL
+init_displays(); // using LVGL
 
     spi_device_interface_config_t devcfg={
 #ifdef CONFIG_LCD_OVERCLOCK
@@ -468,12 +432,10 @@ void app_main(void)
     //Attach the LCD to the SPI bus
     ret=spi_bus_add_device(LCD_HOST, &devcfg, &spi);
     ESP_ERROR_CHECK(ret);
-    //Initialize the LCD
+    //Initialize the LCD.
+    // Should probably remove this and let LVGL do it.
     lcd_init(spi);
     //Initialize the effect displayed
-    ret=pretty_effect_init();
-    ESP_ERROR_CHECK(ret);
 
-    //Go do nice stuff.
-    display_pretty_colors(spi);
+    // start displaying stuff using LVGL
 }

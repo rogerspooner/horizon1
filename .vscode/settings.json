@@ -7,5 +7,6 @@
   "idf.adapterTargetName": "esp32",
   "idf.openOcdConfigs": [
     "board/esp32-bridge.cfg"
-  ]
+  ],
+  "idf.portWin": "COM3"
 }

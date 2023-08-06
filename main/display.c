@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include "esp_system.h"
 #include "esp_err.h"
+#include "esp_timer.h"
 #include "../lvgl/lvgl.h"
 
 #define LV_TICK_PERIOD_MS 50
@@ -33,4 +34,5 @@ esp_err_t init_displays(void)
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, LV_TICK_PERIOD_MS * 1000));
 
     // Call lv_timer_handler() every few milliseconds to handle LVGL related tasks. Learn more.}
+    return ESP_OK;
 }

@@ -3,4 +3,13 @@
 cmake_minimum_required(VERSION 3.16)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(spi_master)
+project(horizon1)
+
+# Borrowed from https://docs.lvgl.io/8.2/get-started/cmake.html
+# Specify path to own LVGL config header
+set(LV_CONF_PATH
+    ${CMAKE_CURRENT_SOURCE_DIR}/components/lv_conf.h
+    CACHE STRING "" FORCE)
+
+# The target "horizon1" depends on LVGL
+# target_link_libraries(horizon1 PRIVATE lvgl)
