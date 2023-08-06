@@ -2,11 +2,16 @@
   "C_Cpp.intelliSenseEngine": "default",
   "files.associations": {
     "freertos.h": "c",
-    "esp_system.h": "c"
+    "esp_system.h": "c",
+    "gpio.h": "c",
+    "lvgl.h": "c",
+    "portmacro.h": "c",
+    "string.h": "c"
   },
   "idf.adapterTargetName": "esp32",
   "idf.openOcdConfigs": [
     "board/esp32-bridge.cfg"
   ],
-  "idf.portWin": "COM3"
+  "idf.portWin": "COM3",
+  "idf.flashType": "UART"
 }

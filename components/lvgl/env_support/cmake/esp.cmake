@@ -5,13 +5,6 @@ file(GLOB_RECURSE SOURCES ${LVGL_ROOT_DIR}/src/*.c)
 # perhaps because it isn't a component with its own CMakeLists.txt file.
 set(ESP_IDF_FORWARD_SLASHES "C:/bin/esp-idf/esp-idf")
 
-set(RIWS_EXTRA_INCLUDE_DIRS
-    "${ESP_IDF_FORWARD_SLASHES}/components/driver/ledc/include"
-    "${ESP_IDF_FORWARD_SLASHES}/components/driver/gpio/include"
-    "${ESP_IDF_FORWARD_SLASHES}/components/driver/spi/include"
-    "${ESP_IDF_FORWARD_SLASHES}/components/driver/i2c/include"
-    CACHE STRING "" FORCE)
-
 idf_build_get_property(LV_MICROPYTHON LV_MICROPYTHON)
 
 if(LV_MICROPYTHON)

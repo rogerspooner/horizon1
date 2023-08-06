@@ -3,17 +3,13 @@
  * Configuration file for v9.0.0-dev
  */
 
-/*
- * Copy this file as `lv_conf.h`
- * 1. simply next to the `lvgl` folder
- * 2. or any other places and
- *    - define `LV_CONF_INCLUDE_SIMPLE`
- *    - add the path as include path
- */
 /* clang-format off */
 
 #ifndef LV_CONF_H
 #define LV_CONF_H
+
+#define LV_HOR_RES_MAX 240
+#define LV_VER_RES_MAX 240
 
 #include <stdint.h>
 
@@ -22,7 +18,9 @@
  *====================*/
 
 /*Color depth: 8 (A8), 16 (RGB565), 24 (RGB888), 32 (XRGB8888)*/
+#ifndef LV_COLOR_DEPTH
 #define LV_COLOR_DEPTH 16
+#endif
 
 /*=========================
    STDLIB WRAPPER SETTINGS

@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.16)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(horizon1)
 
+# Some ESP-IDF include files were not found by LVGL.
+# include_directories(${ESP_IDF}/components/driver/ledc/include)
+
 # Borrowed from https://docs.lvgl.io/8.2/get-started/cmake.html
 # Specify path to own LVGL config header
 set(LV_CONF_PATH
