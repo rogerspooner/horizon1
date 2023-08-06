@@ -25,12 +25,16 @@ void app_main(void)
 {
     init_displays(); // using LVGL
     init_horizon();
+    int frame = 0;
     
     // Expect some stuff to happen here
     while (true)
     {
         display_tick();
-        vTaskDelay(100);
+        vTaskDelay(5);
+        if (frame % 20 == 0)
+            update_horizon();
+        frame ++;
     }
     deinit_displays();
 }

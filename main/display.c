@@ -14,7 +14,7 @@
 #include "lvgl.h"
 #include "lcd_gc9a01_roger.h"
 
-#define LV_TICK_PERIOD_MS 1000
+#define LV_TICK_PERIOD_MS 25
 #define PIN_NUM_MISO 35 // not used, but don't want it to interfere
 #define PIN_NUM_MOSI 33
 #define PIN_NUM_CLK  32
@@ -22,7 +22,7 @@
 #define PIN_NUM_DC   25
 #define PIN_NUM_RST  14
 #define PIN_NUM_BCKL 27 // of st7735s display. The gc9a01 has a software command 0x53, apparently
-#define UPDATE_STRIPE_HEIGHT 32
+#define UPDATE_STRIPE_HEIGHT 64
 
 
 #define INIT_CMD_DELAY_AFTER 0x80 // long delay after sending SPI command. This should be ORed with databytes field in lcd_init_cmd_t struct
@@ -34,7 +34,6 @@ static int lv_screenHeight = 240;
 static spi_device_handle_t spi_dev0;
 
 static void lv_tick_task(void *arg); // hoist
-static void logDumpBytes(const char *tag, const char *msg, uint8_t *data, size_t size); // hoist
 
 /* Creates a semaphore to handle concurrent call to lvgl stuff
  * If you wish to call *any* lvgl function from other threads/tasks
@@ -260,7 +259,7 @@ void lcd_init_spi()
         .max_transfer_sz=UPDATE_STRIPE_HEIGHT * 240 * 2+8
     };
     spi_device_interface_config_t devcfg_gc={
-        .clock_speed_hz= 1*1000*1000,           //Clock out at 10 MHz
+        .clock_speed_hz= 10*1000*1000,           //Clock out at 10 MHz
         .mode=0,                                //SPI mode 0
         .spics_io_num=PIN_NUM_CS_DISP0,         //CS pin for round LCD
         .queue_size=7,                          //We want to be able to queue 7 transactions at a time
@@ -353,12 +352,8 @@ esp_err_t deinit_displays(void)
 static void lv_tick_task(void *arg) {
     (void) arg;
     if (pdTRUE == xSemaphoreTake(xGuiSemaphore, 0)) {
-        ESP_LOGI("display", "lv_tick_inc() called");
         lv_tick_inc(LV_TICK_PERIOD_MS);
         xSemaphoreGive(xGuiSemaphore);
-    }
-    else {
-        ESP_LOGI("display", "Denied xGuiSemaphore, didn't call lv_tick_inc()");
     }
 }
 
@@ -366,30 +361,8 @@ void display_tick(void)
 {
     /* Try to take the semaphore, call lvgl related function on success */
     if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
-        ESP_LOGI("display", "display_tick() got semaphore");
         lv_task_handler();
         xSemaphoreGive(xGuiSemaphore);
     }
-    else {
-            ESP_LOGI("display", "Denied xGuiSemaphore to display_tick().");
-
-    }
 }
 
-
-// example of use: (TAG, "lcd_send_i2c_4bit", data4bit, data4bit_size);
-static void logDumpBytes(const char *tag, const char *msg, uint8_t *data, size_t size)
-{
-    static char buf[1024];
-    char *p = buf;
-    sprintf(p, "%s: ", msg);
-    p += strlen(p);
-    if (size > 32)
-        size = 32;
-    for (int i = 0; i < size; i++)
-    {
-        sprintf(p, "%02x ", data[i]);
-        p += strlen(p);
-    }
-    ESP_LOGI(tag, "%s", buf);
-}
