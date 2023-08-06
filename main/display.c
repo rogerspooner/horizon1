@@ -15,14 +15,14 @@
 #include "lcd_gc9a01_roger.h"
 
 #define LV_TICK_PERIOD_MS 1000
-#define PIN_NUM_MISO 25
+#define PIN_NUM_MISO 35 // not used, but don't want it to interfere
 #define PIN_NUM_MOSI 33
 #define PIN_NUM_CLK  32
-#define PIN_NUM_CS_DISP0   22
+#define PIN_NUM_CS_DISP0   13
 #define PIN_NUM_DC   25
 #define PIN_NUM_RST  14
-#define PIN_NUM_BCKL 27
-#define UPDATE_STRIPE_HEIGHT 16
+#define PIN_NUM_BCKL 27 // of st7735s display. The gc9a01 has a software command 0x53, apparently
+#define UPDATE_STRIPE_HEIGHT 32
 
 
 #define INIT_CMD_DELAY_AFTER 0x80 // long delay after sending SPI command. This should be ORed with databytes field in lcd_init_cmd_t struct
@@ -34,7 +34,7 @@ static int lv_screenHeight = 240;
 static spi_device_handle_t spi_dev0;
 
 static void lv_tick_task(void *arg); // hoist
-
+static void logDumpBytes(const char *tag, const char *msg, uint8_t *data, size_t size); // hoist
 
 /* Creates a semaphore to handle concurrent call to lvgl stuff
  * If you wish to call *any* lvgl function from other threads/tasks
@@ -172,29 +172,6 @@ void lcd_spi_pre_transfer_callback(spi_transaction_t *t)
     gpio_set_level(PIN_NUM_DC, dc);
 }
 
-uint32_t lcd_get_id(spi_device_handle_t spi)
-{
-    // When using SPI_TRANS_CS_KEEP_ACTIVE, bus must be locked/acquired
-    spi_device_acquire_bus(spi, portMAX_DELAY);
-
-    //get_id cmd
-    lcd_cmd(spi, 0x04, true);
-
-    spi_transaction_t t;
-    memset(&t, 0, sizeof(t));
-    t.length=8*3;
-    t.flags = SPI_TRANS_USE_RXDATA;
-    t.user = (void*)1;
-
-    esp_err_t ret = spi_device_polling_transmit(spi, &t);
-    assert( ret == ESP_OK );
-
-    // Release bus
-    spi_device_release_bus(spi);
-
-    return *(uint32_t*)t.rx_data;
-}
-
 /*
 static void send_line_finish(spi_device_handle_t spi)
 {
@@ -221,7 +198,7 @@ void disp0_flush(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t * color
     static spi_transaction_t trans[6]; // from esp32 version
     esp_err_t ret;
 
-    ESP_LOGI("display", "disp0_flush() called, area (%d,%d) > (%d,%d)", area->x1, area->y1, area->x2, area->y2);
+    // ESP_LOGI("display", "disp0_flush() called, area (%d,%d) > (%d,%d)", area->x1, area->y1, area->x2, area->y2);
     for (int x=0; x<6; x++) {
         memset(&trans[x], 0, sizeof(spi_transaction_t));
         if ((x&1)==0) {
@@ -233,10 +210,10 @@ void disp0_flush(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t * color
             trans[x].length=8*4;
             trans[x].user=(void*)1;
         }
-        trans[x].flags=SPI_TRANS_USE_TXDATA;
+        trans[x].flags = SPI_TRANS_USE_TXDATA;
     }
 
-	size_t datalength = lv_area_get_width(area) * lv_area_get_height(area);
+	size_t datalength = lv_area_get_width(area) * lv_area_get_height(area) * sizeof(lv_color_t) * 8;
     trans[0].tx_data[0]=0x2A;           //Column Address Set
 	trans[1].tx_data[0] = (area->x1 >> 8) & 0xFF;
 	trans[1].tx_data[1] = area->x1 & 0xFF;
@@ -256,7 +233,11 @@ void disp0_flush(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t * color
     trans[5].flags=0; //undo SPI_TRANS_USE_TXDATA flag
 
     for (int x=0; x<6; x++) {
-        ret = spi_device_polling_transmit(spi_dev0, &trans[x]);
+
+        ret = spi_device_transmit(spi_dev0, &trans[x]);
+        if (ret != ESP_OK)  {
+            ESP_LOGE("display", "Error x%02x sending transaction %d", ret, x);
+        }
         ESP_ERROR_CHECK(ret);
         // ret=spi_device_queue_trans(spi_dev0, &trans[x], portMAX_DELAY);
     }
@@ -271,7 +252,7 @@ void lcd_init_spi()
     const lcd_init_cmd_t* lcd_init_cmds;
 
     spi_bus_config_t buscfg={
-        .miso_io_num=PIN_NUM_MISO,
+        .miso_io_num= PIN_NUM_MISO,
         .mosi_io_num=PIN_NUM_MOSI,
         .sclk_io_num=PIN_NUM_CLK,
         .quadwp_io_num=-1,
@@ -279,7 +260,7 @@ void lcd_init_spi()
         .max_transfer_sz=UPDATE_STRIPE_HEIGHT * 240 * 2+8
     };
     spi_device_interface_config_t devcfg_gc={
-        .clock_speed_hz=10*1000*1000,           //Clock out at 10 MHz
+        .clock_speed_hz= 1*1000*1000,           //Clock out at 10 MHz
         .mode=0,                                //SPI mode 0
         .spics_io_num=PIN_NUM_CS_DISP0,         //CS pin for round LCD
         .queue_size=7,                          //We want to be able to queue 7 transactions at a time
@@ -298,9 +279,13 @@ void lcd_init_spi()
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pull_up_en = true;
     gpio_config(&io_conf);
-
-    // Backlight on
-    gpio_set_level(PIN_NUM_BCKL, 1);
+    // Backlight off for st7735s
+    gpio_set_level(PIN_NUM_BCKL, 0);
+    // reset both devices
+    gpio_set_level(PIN_NUM_RST, 0);
+    vTaskDelay(2);
+    gpio_set_level(PIN_NUM_RST, 1);
+    vTaskDelay(2);
     
     ESP_LOGI("lcd","Initialising GC9A01 LCD\n");
     lcd_init_cmds = gc9a01_InitSequence;
@@ -309,7 +294,7 @@ void lcd_init_spi()
         lcd_cmd(spi_dev0, lcd_init_cmds[cmd].cmd, false);
         lcd_data(spi_dev0, lcd_init_cmds[cmd].data, lcd_init_cmds[cmd].databytes&0x1F);
         if (lcd_init_cmds[cmd].databytes & INIT_CMD_DELAY_AFTER ) {
-            vTaskDelay(100 / portTICK_PERIOD_MS);
+            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         cmd++;
     }
@@ -318,13 +303,11 @@ void lcd_init_spi()
 esp_err_t init_displays(void)
 {
 
+    ESP_LOGI("display", "init_displays() called");
     xGuiSemaphore = xSemaphoreCreateMutex();
     // Disable st7735s display by de-asserting CS on GPIO 26
     gpio_set_direction(26,GPIO_MODE_OUTPUT); // CS of st7735s
     gpio_set_level(26,1);
-    gpio_set_direction(26,GPIO_MODE_OUTPUT); // backlight of st7735s
-    gpio_set_level(27, 1);
-
     
     lcd_init_spi(); // initialise display(s)
     lv_init();
@@ -343,7 +326,7 @@ esp_err_t init_displays(void)
     static lv_disp_draw_buf_t draw_buf;
     static lv_color_t *buf1 = NULL;
     buf1 = heap_caps_malloc( lv_screenWidth * UPDATE_STRIPE_HEIGHT * sizeof(lv_color_t) + 32, MALLOC_CAP_DMA);
-    lv_disp_draw_buf_init(&draw_buf, buf1, NULL, lv_screenWidth * 113);
+    lv_disp_draw_buf_init(&draw_buf, buf1, NULL, lv_screenWidth * UPDATE_STRIPE_HEIGHT ); // measured in pixels
 
     /*Initialize the display*/
     static lv_disp_drv_t disp_drv;
@@ -391,4 +374,22 @@ void display_tick(void)
             ESP_LOGI("display", "Denied xGuiSemaphore to display_tick().");
 
     }
+}
+
+
+// example of use: (TAG, "lcd_send_i2c_4bit", data4bit, data4bit_size);
+static void logDumpBytes(const char *tag, const char *msg, uint8_t *data, size_t size)
+{
+    static char buf[1024];
+    char *p = buf;
+    sprintf(p, "%s: ", msg);
+    p += strlen(p);
+    if (size > 32)
+        size = 32;
+    for (int i = 0; i < size; i++)
+    {
+        sprintf(p, "%02x ", data[i]);
+        p += strlen(p);
+    }
+    ESP_LOGI(tag, "%s", buf);
 }

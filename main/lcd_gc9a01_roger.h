@@ -40,7 +40,7 @@
 #define GC9A01A_TEARSET 0x44   ///< Set Tear Scanline
 #define GC9A01A_GETLINE 0x45   ///< Get Scanline
 #define GC9A01A_SETBRIGHT 0x51 ///< Write Display Brightness
-#define GC9A01A_SETCTRL 0x53   ///< Write CTRL Display
+#define GC9A01A_SETCTRL 0x53   ///< Write CTRL Display, including backlight, dimming
 #define GC9A01A1_POWER7 0xA7   ///< Power Control 7
 #define GC9A01A_TEWC 0xBA      ///< Tearing effect width control
 #define GC9A01A1_POWER1 0xC1   ///< Power Control 1
