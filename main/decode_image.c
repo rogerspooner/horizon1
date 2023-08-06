@@ -17,6 +17,8 @@ Keep in mind that the decoder library cannot handle progressive files (will give
 format if you want to use a different image file.
 */
 
+/* This file should be deleted. RIWS Removing JPEG support.  */
+
 #include "decode_image.h"
 #include "jpeg_decoder.h"
 #include "esp_log.h"

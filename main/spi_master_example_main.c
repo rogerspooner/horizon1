@@ -448,6 +448,9 @@ void app_main(void)
         .quadhd_io_num=-1,
         .max_transfer_sz=PARALLEL_LINES*320*2+8
     };
+
+    init_displays(); // using LVGL
+
     spi_device_interface_config_t devcfg={
 #ifdef CONFIG_LCD_OVERCLOCK
         .clock_speed_hz=26*1000*1000,           //Clock out at 26 MHz
